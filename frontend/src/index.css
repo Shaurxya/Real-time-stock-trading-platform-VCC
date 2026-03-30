@@ -1,0 +1,132 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ========== Base Styles ========== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: #f8fafc;
+  color: #0f172a;
+  min-height: 100vh;
+  letter-spacing: -0.01em;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* ========== Dark Mode ========== */
+.dark body,
+body.dark {
+  background-color: #0f172a;
+  color: #e2e8f0;
+}
+
+/* ========== Component System ========== */
+@layer components {
+  .card {
+    @apply bg-white border border-surface-border rounded-card shadow-card transition-shadow duration-200;
+  }
+
+  .card-interactive {
+    @apply card hover:shadow-card-hover hover:border-slate-300 cursor-pointer;
+  }
+
+  .badge-profit {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-profit-light text-profit;
+  }
+
+  .badge-loss {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-loss-light text-loss;
+  }
+
+  .btn-primary {
+    @apply px-4 py-2.5 bg-accent text-white rounded-lg font-semibold text-sm transition-all duration-200 hover:bg-accent-hover active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply px-4 py-2.5 bg-surface-tertiary text-text-primary rounded-lg font-semibold text-sm transition-all duration-200 hover:bg-surface-border active:scale-[0.98];
+  }
+
+  .input-field {
+    @apply w-full px-3.5 py-2.5 border border-surface-border rounded-lg text-sm font-medium text-text-primary bg-white placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all duration-200;
+  }
+
+  .table-header {
+    @apply px-4 py-3 text-[11px] font-semibold text-text-secondary uppercase tracking-wider text-left;
+  }
+
+  .table-cell {
+    @apply px-4 py-3.5 text-sm;
+  }
+
+  .skeleton {
+    @apply animate-pulse bg-surface-tertiary rounded-lg;
+  }
+}
+
+/* ========== Smooth Transitions ========== */
+button, a, input, select {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ========== Selection Color ========== */
+::selection {
+  background-color: rgba(37, 99, 235, 0.15);
+  color: inherit;
+}
+
+/* ========== Scrollbar ========== */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* ========== Focus Visible ========== */
+:focus-visible {
+  outline: 2px solid rgba(37, 99, 235, 0.4);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ========== Dark Mode Overrides ========== */
+.dark .card {
+  @apply bg-dark-card border-dark-border;
+}
+
+.dark .input-field {
+  @apply bg-dark-card border-dark-border text-dark-text;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+.dark ::selection {
+  background-color: rgba(37, 99, 235, 0.25);
+}
