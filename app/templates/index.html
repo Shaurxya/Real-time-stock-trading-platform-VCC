@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}StockTrader VCC — Market{% endblock %}
+{% block content %}
+<div class="container">
+  <div id="msg" class="flash"></div>
+
+  <!-- Auth Forms -->
+  <div id="auth-section" style="max-width:400px;margin:2rem auto;">
+    <div class="card" id="login-card">
+      <h2>Login</h2>
+      <input id="login-email" type="email" placeholder="Email" />
+      <input id="login-pass" type="password" placeholder="Password" />
+      <button class="btn btn-primary" style="width:100%" onclick="doLogin()">Login</button>
+      <p style="margin-top:.75rem;font-size:.8rem;text-align:center;">
+        No account? <a href="#" onclick="toggleAuth()">Register</a>
+      </p>
+    </div>
+    <div class="card" id="reg-card" style="display:none">
+      <h2>Register</h2>
+      <input id="reg-name" type="text" placeholder="Full Name" />
+      <input id="reg-email" type="email" placeholder="Email" />
+      <input id="reg-pass" type="password" placeholder="Password" />
+      <button class="btn btn-primary" style="width:100%" onclick="doRegister()">Create Account</button>
+      <p style="margin-top:.75rem;font-size:.8rem;text-align:center;">
+        Have an account? <a href="#" onclick="toggleAuth()">Login</a>
+      </p>
+    </div>
+  </div>
+
+  <!-- Market view -->
+  <div id="market-section" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+      <h1 style="font-size:1.4rem;">Live Market</h1>
+      <button class="btn btn-secondary" onclick="refreshPrices()">⟳ Refresh Prices</button>
+    </div>
+    <div class="card">
+      <table id="stocks-table">
+        <thead><tr><th>Symbol</th><th>Name</th><th>Price</th><th>Change</th><th>Action</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Trade Modal -->
+  <div id="trade-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:100;display:none;align-items:center;justify-content:center;">
+    <div class="card" style="width:320px;">
+      <h2 id="modal-title">Trade</h2>
+      <p id="modal-price" style="margin-bottom:.75rem;color:#8b949e;"></p>
+      <input id="trade-qty" type="number" min="1" placeholder="Quantity" />
+      <div style="display:flex;gap:.5rem;">
+        <button class="btn btn-primary" style="flex:1" onclick="executeTrade('buy')">Buy</button>
+        <button class="btn btn-danger" style="flex:1" onclick="executeTrade('sell')">Sell</button>
+        <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+let currentSymbol = null;
+let currentPrice = 0;
+
+function toggleAuth() {
+  document.getElementById('login-card').style.display = document.getElementById('login-card').style.display === 'none' ? '' : 'none';
+  document.getElementById('reg-card').style.display  = document.getElementById('reg-card').style.display === 'none'  ? '' : 'none';
+}
+
+async function doLogin() {
+  const email = document.getElementById('login-email').value;
+  const pass  = document.getElementById('login-pass').value;
+  const res = await apiFetch('/api/auth/login', {method:'POST', body: JSON.stringify({email, password: pass})});
+  if (res.ok) { location.reload(); }
+  else { const d = await res.json(); showMsg(d.error || 'Login failed', false); }
+}
+
+async function doRegister() {
+  const name  = document.getElementById('reg-name').value;
+  const email = document.getElementById('reg-email').value;
+  const pass  = document.getElementById('reg-pass').value;
+  const res = await apiFetch('/api/auth/register', {method:'POST', body: JSON.stringify({name, email, password: pass})});
+  if (res.ok) { location.reload(); }
+  else { const d = await res.json(); showMsg(d.error || 'Registration failed', false); }
+}
+
+async function loadStocks() {
+  const res = await apiFetch('/api/stocks/');
+  if (!res.ok) return;
+  const stocks = await res.json();
+  const tbody = document.querySelector('#stocks-table tbody');
+  tbody.innerHTML = '';
+  stocks.sort((a,b) => a.symbol.localeCompare(b.symbol));
+  for (const s of stocks) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${s.symbol}</strong></td>
+      <td>${s.name}</td>
+      <td>$${s.price.toFixed(2)}</td>
+      <td>${fmtChange(s.change_pct)}</td>
+      <td><button class="btn btn-secondary" onclick="openTrade('${s.symbol}','${s.name}',${s.price})">Trade</button></td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+async function refreshPrices() {
+  await apiFetch('/api/stocks/refresh', {method:'POST'});
+  await loadStocks();
+  showMsg('Prices refreshed');
+}
+
+function openTrade(symbol, name, price) {
+  currentSymbol = symbol;
+  currentPrice  = price;
+  document.getElementById('modal-title').textContent = `Trade ${symbol} — ${name}`;
+  document.getElementById('modal-price').textContent = `Current price: $${price.toFixed(2)}`;
+  document.getElementById('trade-qty').value = '';
+  const modal = document.getElementById('trade-modal');
+  modal.style.display = 'flex';
+}
+
+function closeModal() {
+  document.getElementById('trade-modal').style.display = 'none';
+}
+
+async function executeTrade(type) {
+  const qty = parseInt(document.getElementById('trade-qty').value);
+  if (!qty || qty <= 0) { showMsg('Enter a valid quantity', false); return; }
+  const res = await apiFetch(`/api/trades/${type}`, {method:'POST', body: JSON.stringify({symbol: currentSymbol, quantity: qty})});
+  const d = await res.json();
+  if (res.ok) {
+    closeModal();
+    showMsg(`${type.toUpperCase()} order executed: ${qty} × ${currentSymbol} @ $${currentPrice.toFixed(2)}`);
+    await checkLogin();
+  } else {
+    showMsg(d.error || 'Trade failed', false);
+  }
+}
+
+(async () => {
+  const user = await checkLogin();
+  if (user) {
+    document.getElementById('auth-section').style.display = 'none';
+    document.getElementById('market-section').style.display = '';
+    await loadStocks();
+    // Auto-refresh every 30 s
+    setInterval(async () => { await apiFetch('/api/stocks/refresh',{method:'POST'}); await loadStocks(); }, 30000);
+  }
+})();
+</script>
+{% endblock %}

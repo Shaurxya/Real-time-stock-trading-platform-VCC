@@ -1,0 +1,20 @@
+version: "3.9"
+
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-key}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - USERS_TABLE=${USERS_TABLE:-stock_platform_users}
+      - PORTFOLIOS_TABLE=${PORTFOLIOS_TABLE:-stock_platform_portfolios}
+      - TRADES_TABLE=${TRADES_TABLE:-stock_platform_trades}
+      - STOCKS_TABLE=${STOCKS_TABLE:-stock_platform_stocks}
+      - TRADE_NOTIFICATIONS_TOPIC_ARN=${TRADE_NOTIFICATIONS_TOPIC_ARN:-}
+      - PRICE_ALERTS_TOPIC_ARN=${PRICE_ALERTS_TOPIC_ARN:-}
+      - INITIAL_BALANCE=${INITIAL_BALANCE:-100000.0}
+    restart: unless-stopped

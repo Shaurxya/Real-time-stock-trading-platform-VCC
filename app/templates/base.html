@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}StockTrader VCC{% endblock %}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0d1117; color: #c9d1d9; min-height: 100vh; }
+    a { color: #58a6ff; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    nav { background: #161b22; border-bottom: 1px solid #30363d; padding: 0.75rem 1.5rem; display: flex; align-items: center; gap: 1.5rem; }
+    nav .brand { font-size: 1.2rem; font-weight: 700; color: #58a6ff; }
+    nav .spacer { flex: 1; }
+    .btn { display: inline-block; padding: 0.45rem 1rem; border-radius: 6px; font-size: 0.875rem; font-weight: 600; cursor: pointer; border: none; transition: opacity .15s; }
+    .btn:hover { opacity: .85; }
+    .btn-primary { background: #238636; color: #fff; }
+    .btn-danger  { background: #da3633; color: #fff; }
+    .btn-secondary { background: #21262d; color: #c9d1d9; border: 1px solid #30363d; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 1.5rem; }
+    .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem; }
+    .card h2 { margin-bottom: 1rem; font-size: 1rem; color: #8b949e; text-transform: uppercase; letter-spacing: .05em; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    th { color: #8b949e; text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid #30363d; }
+    td { padding: 0.5rem 0.75rem; border-bottom: 1px solid #21262d; }
+    tr:last-child td { border-bottom: none; }
+    .positive { color: #3fb950; }
+    .negative { color: #f85149; }
+    input, select { background: #0d1117; border: 1px solid #30363d; color: #c9d1d9; border-radius: 6px; padding: 0.45rem 0.75rem; font-size: 0.875rem; width: 100%; margin-bottom: 0.75rem; }
+    input:focus, select:focus { outline: none; border-color: #58a6ff; }
+    .flash { padding: 0.75rem 1rem; border-radius: 6px; margin-bottom: 1rem; font-size: 0.875rem; }
+    .flash-error   { background: #3d1a1a; border: 1px solid #f85149; color: #f85149; }
+    .flash-success { background: #1a3d1e; border: 1px solid #3fb950; color: #3fb950; }
+    #msg { display: none; }
+  </style>
+</head>
+<body>
+<nav>
+  <span class="brand">📈 StockTrader VCC</span>
+  <a href="/">Market</a>
+  <a href="/dashboard">Dashboard</a>
+  <span class="spacer"></span>
+  <span id="nav-user" style="font-size:.85rem;color:#8b949e;"></span>
+  <button class="btn btn-secondary" id="btn-logout" style="display:none" onclick="logout()">Logout</button>
+</nav>
+{% block content %}{% endblock %}
+<script>
+async function apiFetch(url, opts={}) {
+  const res = await fetch(url, { credentials: 'include', headers: {'Content-Type':'application/json'}, ...opts });
+  return res;
+}
+async function checkLogin() {
+  const res = await apiFetch('/api/auth/me');
+  if (res.ok) {
+    const u = await res.json();
+    document.getElementById('nav-user').textContent = u.name + ' | $' + u.cash_balance.toLocaleString('en-US',{minimumFractionDigits:2});
+    document.getElementById('btn-logout').style.display = '';
+    return u;
+  }
+  return null;
+}
+async function logout() {
+  await apiFetch('/api/auth/logout', {method:'POST'});
+  location.reload();
+}
+function fmtChange(v) {
+  const cls = v >= 0 ? 'positive' : 'negative';
+  return `<span class="${cls}">${v >= 0 ? '+' : ''}${v.toFixed(2)}%</span>`;
+}
+function showMsg(text, ok=true) {
+  const el = document.getElementById('msg');
+  el.className = 'flash ' + (ok ? 'flash-success' : 'flash-error');
+  el.textContent = text;
+  el.style.display = '';
+  setTimeout(() => { el.style.display = 'none'; }, 4000);
+}
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

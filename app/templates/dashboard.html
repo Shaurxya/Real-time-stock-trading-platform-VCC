@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — StockTrader VCC{% endblock %}
+{% block content %}
+<div class="container">
+  <div id="msg" class="flash"></div>
+  <div id="not-logged" style="text-align:center;margin-top:4rem;">
+    <p>Please <a href="/">log in</a> to view your dashboard.</p>
+  </div>
+  <div id="dashboard" style="display:none">
+    <h1 style="font-size:1.4rem;margin-bottom:1.25rem;">My Dashboard</h1>
+
+    <!-- Summary cards -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem;">
+      <div class="card" style="padding:1rem;">
+        <div style="color:#8b949e;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;">Cash Balance</div>
+        <div id="cash" style="font-size:1.5rem;font-weight:700;margin-top:.25rem;color:#58a6ff;"></div>
+      </div>
+      <div class="card" style="padding:1rem;">
+        <div style="color:#8b949e;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;">Invested Value</div>
+        <div id="invested" style="font-size:1.5rem;font-weight:700;margin-top:.25rem;"></div>
+      </div>
+      <div class="card" style="padding:1rem;">
+        <div style="color:#8b949e;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;">Unrealized P&amp;L</div>
+        <div id="pnl" style="font-size:1.5rem;font-weight:700;margin-top:.25rem;"></div>
+      </div>
+      <div class="card" style="padding:1rem;">
+        <div style="color:#8b949e;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;">Total Portfolio</div>
+        <div id="total" style="font-size:1.5rem;font-weight:700;margin-top:.25rem;color:#f0f6fc;"></div>
+      </div>
+    </div>
+
+    <!-- Holdings -->
+    <div class="card">
+      <h2>Holdings</h2>
+      <table id="holdings-table">
+        <thead><tr>
+          <th>Symbol</th><th>Qty</th><th>Avg Cost</th><th>Current</th><th>Market Value</th><th>Unrealized P&L</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+      <p id="no-holdings" style="color:#8b949e;font-size:.85rem;margin-top:.5rem;display:none;">No holdings yet. <a href="/">Buy some stocks!</a></p>
+    </div>
+
+    <!-- Trade History -->
+    <div class="card">
+      <h2>Trade History</h2>
+      <table id="trades-table">
+        <thead><tr><th>Date</th><th>Type</th><th>Symbol</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <p id="no-trades" style="color:#8b949e;font-size:.85rem;margin-top:.5rem;display:none;">No trades yet.</p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function fmt$(v) { return '$' + v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+async function loadDashboard() {
+  const [portRes, tradesRes] = await Promise.all([
+    apiFetch('/api/portfolio/'),
+    apiFetch('/api/trades/history'),
+  ]);
+  if (!portRes.ok) return;
+  const port   = await portRes.json();
+  const trades = tradesRes.ok ? await tradesRes.json() : [];
+
+  document.getElementById('cash').textContent     = fmt$(port.cash_balance);
+  document.getElementById('invested').textContent = fmt$(port.total_market_value);
+  const pnl = port.total_unrealized_pnl;
+  const pnlEl = document.getElementById('pnl');
+  pnlEl.textContent = (pnl >= 0 ? '+' : '') + fmt$(pnl);
+  pnlEl.className = pnl >= 0 ? 'positive' : 'negative';
+  pnlEl.style.fontSize = '1.5rem'; pnlEl.style.fontWeight = '700'; pnlEl.style.marginTop = '.25rem';
+  document.getElementById('total').textContent = fmt$(port.total_portfolio_value);
+
+  // Holdings
+  const htbody = document.querySelector('#holdings-table tbody');
+  htbody.innerHTML = '';
+  if (port.holdings.length === 0) {
+    document.getElementById('no-holdings').style.display = '';
+  } else {
+    for (const h of port.holdings) {
+      const pnlCls = h.unrealized_pnl >= 0 ? 'positive' : 'negative';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${h.symbol}</strong></td>
+        <td>${h.quantity}</td>
+        <td>${fmt$(h.avg_price)}</td>
+        <td>${fmt$(h.current_price)}</td>
+        <td>${fmt$(h.market_value)}</td>
+        <td class="${pnlCls}">${h.unrealized_pnl >= 0 ? '+' : ''}${fmt$(h.unrealized_pnl)} (${h.unrealized_pnl_pct >= 0 ? '+' : ''}${h.unrealized_pnl_pct.toFixed(2)}%)</td>`;
+      htbody.appendChild(tr);
+    }
+  }
+
+  // Trades
+  const ttbody = document.querySelector('#trades-table tbody');
+  ttbody.innerHTML = '';
+  if (trades.length === 0) {
+    document.getElementById('no-trades').style.display = '';
+  } else {
+    for (const t of trades) {
+      const tr = document.createElement('tr');
+      const date = new Date(t.timestamp).toLocaleString();
+      tr.innerHTML = `
+        <td>${date}</td>
+        <td><span class="${t.trade_type === 'buy' ? 'positive' : 'negative'}">${t.trade_type.toUpperCase()}</span></td>
+        <td>${t.symbol}</td>
+        <td>${t.quantity}</td>
+        <td>${fmt$(parseFloat(t.price))}</td>
+        <td>${fmt$(parseFloat(t.total_value))}</td>`;
+      ttbody.appendChild(tr);
+    }
+  }
+}
+
+(async () => {
+  const user = await checkLogin();
+  if (!user) {
+    document.getElementById('not-logged').style.display = '';
+    return;
+  }
+  document.getElementById('dashboard').style.display = '';
+  document.getElementById('not-logged').style.display = 'none';
+  await loadDashboard();
+  setInterval(loadDashboard, 30000);
+})();
+</script>
+{% endblock %}
