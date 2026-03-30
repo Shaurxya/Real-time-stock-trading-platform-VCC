@@ -33,7 +33,7 @@ const Dashboard = () => {
   useEffect(() => {
     fetchStocks();
 
-    const socket = io('http://98.93.37.160:5001');
+    const socket = io('https://98.93.37.160.nip.io');
     socket.on('stockUpdates', (updates) => {
       setStocks((prev) =>
         prev.map((s) => {

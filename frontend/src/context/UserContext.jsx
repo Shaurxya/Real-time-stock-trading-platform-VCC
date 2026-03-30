@@ -1,7 +1,7 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 
-const API_BASE = 'http://98.93.37.160:5001/api';
+const API_BASE = 'https://98.93.37.160.nip.io/api';
 const UserContext = createContext();
 
 export const UserProvider = ({ children }) => {
